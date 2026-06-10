@@ -17,9 +17,7 @@ export const CardPicker: React.FC<CardPickerProps> = ({ game, players, currentPl
   const { t } = useTranslation();
   const [randomEmoji, setRandomEmoji] = useState(getRandomEmoji);
   const playPlayer = (gameId: string, playerId: string, card: CardConfig) => {
-    if (game.gameStatus !== Status.Finished) {
-      updatePlayerValue(gameId, playerId, card.value, randomEmoji);
-    }
+    updatePlayerValue(gameId, playerId, card.value, randomEmoji);
   };
 
   useEffect(() => {
@@ -33,7 +31,7 @@ export const CardPicker: React.FC<CardPickerProps> = ({ game, players, currentPl
   return (
     <div className='w-full max-w-full animate-fade-in-down'>
       <div className='text-center text-lg font-semibold my-4'>
-        {game.gameStatus !== Status.Finished
+        {game.gameStatus !== Status.NotStarted
           ? t('CardPicker.ClickOnTheCardToVote')
           : t('CardPicker.SessionNotReadyForVotingWaitForModeratorToStart')}
       </div>
@@ -59,11 +57,6 @@ export const CardPicker: React.FC<CardPickerProps> = ({ game, players, currentPl
                 isSelected
                   ? 'border-dashed border-2 border-gray-800 z-10 shadow-lg scale-115'
                   : 'shadow-md scale-100'
-              }
-              ${
-                game.gameStatus === Status.Finished
-                  ? 'pointer-events-none opacity-50 cursor-not-allowed'
-                  : ''
               }
             `}
               style={{
