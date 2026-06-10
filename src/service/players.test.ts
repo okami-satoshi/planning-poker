@@ -104,6 +104,7 @@ describe('Players service', () => {
       const spyPlayer = jest.spyOn(fb, 'updatePlayerInStore');
       const spyGame = jest.spyOn(games, 'updateGameStatus');
       const emoji = 'emeowticon';
+      jest.spyOn(fb, 'getGameFromStore').mockResolvedValueOnce(mockGame);
       jest.spyOn(fb, 'getPlayerFromStore').mockResolvedValueOnce(mockPlayer);
 
       await updatePlayerValue(mockGame.id, mockPlayer.id, 3, emoji);
@@ -115,10 +116,40 @@ describe('Players service', () => {
       expect(spyGame).toHaveBeenCalledWith(mockGame.id);
     });
 
-    // NOTE: Shouldn't there be a case that the player doesn't get updated if the game doesn't exist? Fn doesn't have that logix
+    it('should keep the game finished when updating a player after reveal', async () => {
+      const spyPlayer = jest.spyOn(fb, 'updatePlayerInStore');
+      const spyGame = jest.spyOn(games, 'updateGameStatus');
+      const emoji = 'emeowticon';
+      jest
+        .spyOn(fb, 'getGameFromStore')
+        .mockResolvedValueOnce({ ...mockGame, gameStatus: Status.Finished });
+      jest.spyOn(fb, 'getPlayerFromStore').mockResolvedValueOnce(mockPlayer);
+
+      await updatePlayerValue(mockGame.id, mockPlayer.id, 5, emoji);
+
+      expect(spyPlayer).toHaveBeenCalledWith(
+        mockGame.id,
+        expect.objectContaining({ value: 5, emoji }),
+      );
+      expect(spyGame).toHaveBeenCalledTimes(0);
+    });
+
+    it("should not update the player if the game doesn't exist", async () => {
+      const spyPlayer = jest.spyOn(fb, 'updatePlayerInStore');
+      const spyGame = jest.spyOn(games, 'updateGameStatus');
+      jest.spyOn(fb, 'getGameFromStore').mockResolvedValueOnce(undefined);
+      jest.spyOn(fb, 'getPlayerFromStore').mockResolvedValueOnce(mockPlayer);
+
+      await updatePlayerValue(mockGame.id, mockPlayer.id, 3, '');
+
+      expect(spyPlayer).toHaveBeenCalledTimes(0);
+      expect(spyGame).toHaveBeenCalledTimes(0);
+    });
+
     it('should not update the player if the player does not exist', async () => {
       const spyPlayer = jest.spyOn(fb, 'updatePlayerInStore');
       const spyGame = jest.spyOn(games, 'updateGameStatus');
+      jest.spyOn(fb, 'getGameFromStore').mockResolvedValueOnce(mockGame);
       jest.spyOn(fb, 'getPlayerFromStore').mockResolvedValueOnce(undefined);
 
       await updatePlayerValue(mockGame.id, mockPlayer.id, 3, '');

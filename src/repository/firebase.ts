@@ -4,14 +4,18 @@ import 'firebase/firestore';
 import { Game } from '../types/game';
 import { Player } from '../types/player';
 
+const env =
+  globalThis.__APP_ENV__ ||
+  (typeof process !== 'undefined' ? (process.env as Record<string, string | undefined>) : {});
+
 const firebaseConfig = {
-  apiKey: process.env.VITE_FB_API_KEY,
-  authDomain: process.env.VITE_FB_AUTH_DOMAIN,
-  projectId: process.env.VITE_FB_PROJECT_ID,
-  storageBucket: process.env.VITE_FB_STORAGE_BUCKET,
-  messagingSenderId: process.env.VITE_FB_MESSAGING_SENDER_ID,
-  appId: process.env.VITE_FB_APP_ID,
-  measurementId: process.env.VITE_FB_MEASUREMENT_ID,
+  apiKey: env.VITE_FB_API_KEY,
+  authDomain: env.VITE_FB_AUTH_DOMAIN,
+  projectId: env.VITE_FB_PROJECT_ID,
+  storageBucket: env.VITE_FB_STORAGE_BUCKET,
+  messagingSenderId: env.VITE_FB_MESSAGING_SENDER_ID,
+  appId: env.VITE_FB_APP_ID,
+  measurementId: env.VITE_FB_MEASUREMENT_ID,
 };
 
 // Initialize Firebase
@@ -21,7 +25,7 @@ const playersCollectionName = 'players';
 const db = firebase.firestore();
 db.settings({ experimentalAutoDetectLongPolling: true });
 // Use Firestore Emulator if the environment variable is set
-if (process.env.VITE_USE_FIRESTORE_EMULATOR === 'true') {
+if (env.VITE_USE_FIRESTORE_EMULATOR === 'true') {
   console.log('Using Firestore Emulator');
   // application host name
   const emulatorHost = window.location.hostname;

@@ -145,10 +145,11 @@ describe('CardPicker component', () => {
     expect(updatePlayerValueSpy).toHaveBeenCalledWith(mockGame.id, currentPlayerId, 1, 'something');
   });
 
-  it('should not update player value when player clicks on a card and game is finished', () => {
+  it('should update player value when player clicks on a card and game is finished', () => {
     const currentPlayerId = mockPlayers[0].id;
     jest.resetAllMocks();
     const updatePlayerValueSpy = jest.spyOn(playersService, 'updatePlayerValue');
+    jest.spyOn(cardConfigs, 'getRandomEmoji').mockReturnValue('something');
     const finishedGameMock = {
       ...mockGame,
       gameStatus: Status.Finished,
@@ -162,7 +163,13 @@ describe('CardPicker component', () => {
     );
     const cardValueElement = screen.queryAllByText(1);
     userEvent.click(cardValueElement[0]);
-    expect(updatePlayerValueSpy).toHaveBeenCalledTimes(0);
+    expect(updatePlayerValueSpy).toHaveBeenCalled();
+    expect(updatePlayerValueSpy).toHaveBeenCalledWith(
+      mockGame.id,
+      currentPlayerId,
+      1,
+      'something',
+    );
   });
   it('should display Click on the card to vote when game is not finished', () => {
     const currentPlayerId = mockPlayers[0].id;
@@ -172,7 +179,7 @@ describe('CardPicker component', () => {
 
     expect(helperText).toBeInTheDocument();
   });
-  it('should display wait message to vote when game is finished', () => {
+  it('should display Click on the card to vote when game is finished', () => {
     const currentPlayerId = mockPlayers[0].id;
     const finishedGameMock = {
       ...mockGame,
@@ -185,9 +192,7 @@ describe('CardPicker component', () => {
         currentPlayerId={currentPlayerId}
       />,
     );
-    const helperText = screen.getByText(
-      'Session not ready for Voting! Wait for moderator to start',
-    );
+    const helperText = screen.getByText('Click on the card to vote');
 
     expect(helperText).toBeInTheDocument();
   });
