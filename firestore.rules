@@ -89,7 +89,8 @@ service cloud.firestore {
       allow delete: if isGameId(gameId);
 
       match /players/{playerId} {
-        allow read: if isGameId(gameId) && isPlayerId(playerId);
+        allow get: if isGameId(gameId) && isPlayerId(playerId);
+        allow list: if isGameId(gameId);
         allow create, update: if isGameId(gameId)
           && isPlayerId(playerId)
           && request.resource.data.id == playerId
