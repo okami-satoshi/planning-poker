@@ -1,0 +1,106 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isGameId(id) {
+      return id is string && id.matches('^[0-9A-HJKMNP-TV-Z]{26}$');
+    }
+
+    function isPlayerId(id) {
+      return id is string && id.matches('^[0-9A-HJKMNP-TV-Z]{26}$');
+    }
+
+    function hasField(data, key) {
+      return data.keys().hasAny([key]);
+    }
+
+    function optionalString(data, key, maxLength) {
+      return !hasField(data, key) || (data[key] is string && data[key].size() <= maxLength);
+    }
+
+    function optionalBool(data, key) {
+      return !hasField(data, key) || data[key] is bool;
+    }
+
+    function isStatus(status) {
+      return status in ['Not Started', 'Started', 'In Progress', 'Finished'];
+    }
+
+    function isGameType(gameType) {
+      return gameType in ['Fibonacci', 'ShortFibonacci', 'TShirt', 'TShirtAndNumber', 'Custom'];
+    }
+
+    function isValidGame(data) {
+      return data.keys().hasOnly([
+          'id',
+          'name',
+          'average',
+          'gameStatus',
+          'gameType',
+          'isAllowMembersToManageSession',
+          'storyName',
+          'autoReveal',
+          'cards',
+          'createdBy',
+          'createdById',
+          'createdAt',
+          'updatedAt',
+          'timerProps',
+        ])
+        && data.id is string
+        && isGameId(data.id)
+        && data.name is string
+        && data.name.size() > 0
+        && data.name.size() <= 100
+        && data.average is number
+        && isStatus(data.gameStatus)
+        && (!hasField(data, 'gameType') || isGameType(data.gameType))
+        && data.cards is list
+        && data.cards.size() <= 30
+        && data.createdBy is string
+        && data.createdBy.size() > 0
+        && data.createdBy.size() <= 100
+        && data.createdById is string
+        && isPlayerId(data.createdById)
+        && data.createdAt is timestamp
+        && optionalBool(data, 'isAllowMembersToManageSession')
+        && optionalString(data, 'storyName', 200)
+        && optionalBool(data, 'autoReveal');
+    }
+
+    function isValidPlayer(data) {
+      return data.keys().hasOnly(['id', 'name', 'status', 'value', 'emoji'])
+        && data.id is string
+        && isPlayerId(data.id)
+        && data.name is string
+        && data.name.size() > 0
+        && data.name.size() <= 100
+        && isStatus(data.status)
+        && (!hasField(data, 'value') || data.value is number)
+        && optionalString(data, 'emoji', 20);
+    }
+
+    match /games/{gameId} {
+      allow get: if isGameId(gameId);
+      allow list: if false;
+      allow create, update: if isGameId(gameId)
+        && request.resource.data.id == gameId
+        && isValidGame(request.resource.data);
+      allow delete: if isGameId(gameId);
+
+      match /players/{playerId} {
+        allow get: if isGameId(gameId) && isPlayerId(playerId);
+        allow list: if isGameId(gameId);
+        allow create, update: if isGameId(gameId)
+          && isPlayerId(playerId)
+          && request.resource.data.id == playerId
+          && isValidPlayer(request.resource.data);
+        allow delete: if isGameId(gameId) && isPlayerId(playerId);
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
