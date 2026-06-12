@@ -3,6 +3,17 @@
     "site": "planning-poker-8440c",
     "public": "build",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "headers": [
+      {
+        "source": "**",
+        "headers": [
+          {
+            "key": "X-Robots-Tag",
+            "value": "noindex, nofollow"
+          }
+        ]
+      }
+    ],
     "rewrites": [
       {
         "source": "**",
