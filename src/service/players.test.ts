@@ -116,6 +116,30 @@ describe('Players service', () => {
       expect(spyGame).toHaveBeenCalledWith(mockGame.id);
     });
 
+    it('should clear the vote when the same selected card is clicked again', async () => {
+      const spyPlayer = jest.spyOn(fb, 'updatePlayerInStore');
+      const spyGame = jest.spyOn(games, 'updateGameStatus');
+      jest.spyOn(fb, 'getGameFromStore').mockResolvedValueOnce(mockGame);
+      jest.spyOn(fb, 'getPlayerFromStore').mockResolvedValueOnce({
+        ...mockPlayer,
+        status: Status.Finished,
+        value: 3,
+        emoji: 'emeowticon',
+      });
+
+      await updatePlayerValue(mockGame.id, mockPlayer.id, 3, 'emeowticon');
+
+      expect(spyPlayer).toHaveBeenCalledWith(
+        mockGame.id,
+        expect.objectContaining({
+          value: 0,
+          emoji: '',
+          status: Status.NotStarted,
+        }),
+      );
+      expect(spyGame).toHaveBeenCalledWith(mockGame.id);
+    });
+
     it('should keep the game finished when updating a player after reveal', async () => {
       const spyPlayer = jest.spyOn(fb, 'updatePlayerInStore');
       const spyGame = jest.spyOn(games, 'updateGameStatus');

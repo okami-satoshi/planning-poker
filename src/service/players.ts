@@ -35,11 +35,15 @@ export const updatePlayerValue = async (
   const player = await getPlayerFromStore(gameId, playerId);
 
   if (game && player) {
+    const isDeselecting =
+      game.gameStatus !== Status.Finished &&
+      player.status === Status.Finished &&
+      player.value === value;
     const updatedPlayer = {
       ...player,
-      value: value,
-      emoji: randomEmoji,
-      status: Status.Finished,
+      value: isDeselecting ? 0 : value,
+      emoji: isDeselecting ? '' : randomEmoji,
+      status: isDeselecting ? Status.NotStarted : Status.Finished,
     };
     await updatePlayerInStore(gameId, updatedPlayer);
     if (game.gameStatus !== Status.Finished) {
