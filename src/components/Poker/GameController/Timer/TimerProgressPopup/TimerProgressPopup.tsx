@@ -1,7 +1,6 @@
 import { ChangeEvent, useEffect, useRef, useState, useCallback } from 'react';
 import CircularProgressBar from '../../../../elements/CircularProgressBar';
 import { useTranslation } from 'react-i18next';
-import { useTimerPosition } from './useTimerPosition';
 
 type TimerProps = {
   isMod?: boolean;
@@ -38,7 +37,6 @@ export const TimerProgress: React.FC<TimerProps> = ({
   const [_soundOn, setSoundOn] = useState(soundOn);
 
   const { t } = useTranslation();
-  const { popupRef, position, isDragging, dragHandleProps } = useTimerPosition();
 
   useEffect(() => {
     if (!isMod) {
@@ -116,31 +114,7 @@ export const TimerProgress: React.FC<TimerProps> = ({
   const [currentMinutesRunning, currentSecondsRunning] = getMinutesAndSeconds(current);
 
   return (
-    <div
-      ref={popupRef}
-      style={position}
-      className='fixed shadow-xl rounded-lg bg-white p-4 w-[15rem] max-w-[calc(100vw-2rem)] max-h-[calc(100dvh-2rem)] overflow-y-auto h-fit border-gray-200 border-1 dark:bg-gray-800 dark:border-gray-700 z-10'
-    >
-      <div className='h-6 mb-2 flex justify-center'>
-        <button
-          type='button'
-          aria-label={t('GameController.Timer.moveTimer')}
-          title={t('GameController.Timer.moveTimerHint')}
-          className={`touch-none select-none flex h-6 w-16 items-center justify-center rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus-visible:outline-2 focus-visible:outline-blue-400 ${
-            isDragging ? 'cursor-grabbing' : 'cursor-grab'
-          }`}
-          {...dragHandleProps}
-        >
-          <svg width='24' height='16' viewBox='0 0 24 16' fill='currentColor' aria-hidden='true'>
-            {[5, 12, 19].map((cx) => (
-              <g key={cx}>
-                <circle cx={cx} cy='5' r='1.5' />
-                <circle cx={cx} cy='11' r='1.5' />
-              </g>
-            ))}
-          </svg>
-        </button>
-      </div>
+    <div className='fixed bottom-4 right-4 shadow-xl rounded-lg bg-white p-4 w-[15rem] h-fit border-gray-200 border-1 dark:bg-gray-800 dark:border-gray-700 z-10'>
       <button
         title={
           _soundOn
