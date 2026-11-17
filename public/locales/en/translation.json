@@ -36,7 +36,9 @@
       "startTimer": "Start Timer",
       "resetTimer": "Reset Timer",
       "pauseTimer": "Pause Timer",
-      "closeTimer": "Close Timer"
+      "closeTimer": "Close Timer",
+      "moveTimer": "Move Timer",
+      "moveTimerHint": "Drag to move, or use arrow keys. Hold Shift to move faster."
     }
   },
   "CardPicker": {
