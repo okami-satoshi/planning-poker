@@ -1,10 +1,12 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import i18n from 'i18next';
+import deDE from '../../../../public/locales/de-DE/translation.json';
 import * as gamesService from '../../../service/games';
 import { Game, GameType } from '../../../types/game';
 import { Player } from '../../../types/player';
 import { Status } from '../../../types/status';
-import { CardConfig } from '../../Players/CardPicker/CardConfigs';
+import { CardConfig, getCards } from '../../Players/CardPicker/CardConfigs';
 import {
   areAllFinishedPlayersDisplayValuesNumeric,
   AutoReveal,
@@ -52,16 +54,50 @@ describe('GameController component', () => {
     );
     expect(screen.getByText(mockGame.name)).toBeInTheDocument();
   });
-  it('should display game status', () => {
-    render(
-      <GameController
-        game={mockGame}
-        currentPlayerId={mockCurrentPlayerId}
-        players={mockPlayers}
-      />,
+  describe('game status translation', () => {
+    afterEach(async () => {
+      await act(async () => {
+        await i18n.changeLanguage('en');
+      });
+    });
+
+    it.each([
+      { status: Status.NotStarted, expectedText: 'Not Started', expectedIcon: '🚀' },
+      { status: Status.Started, expectedText: 'Started', expectedIcon: '🚀' },
+      { status: Status.InProgress, expectedText: 'In Progress', expectedIcon: '⏱️' },
+      { status: Status.Finished, expectedText: 'Finished', expectedIcon: '🎉' },
+    ])(
+      'should display translated status text and icon for $status',
+      ({ status, expectedText, expectedIcon }) => {
+        render(
+          <GameController
+            game={{ ...mockGame, gameStatus: status }}
+            currentPlayerId={mockCurrentPlayerId}
+            players={mockPlayers}
+          />,
+        );
+
+        expect(screen.getByText(`${expectedText} ${expectedIcon}`)).toBeInTheDocument();
+      },
     );
 
-    expect(screen.getByText(`${mockGame.gameStatus} ⏱️`)).toBeInTheDocument();
+    it('should display status text in the currently selected language, not the raw status value', async () => {
+      i18n.addResourceBundle('de', 'translation', deDE, true, true);
+      await act(async () => {
+        await i18n.changeLanguage('de');
+      });
+
+      render(
+        <GameController
+          game={{ ...mockGame, gameStatus: Status.InProgress }}
+          currentPlayerId={mockCurrentPlayerId}
+          players={mockPlayers}
+        />,
+      );
+
+      expect(screen.getByText('In Bearbeitung ⏱️')).toBeInTheDocument();
+      expect(screen.queryByText(`${Status.InProgress} ⏱️`)).not.toBeInTheDocument();
+    });
   });
 
   it('should display exit option', () => {
@@ -135,6 +171,54 @@ describe('GameController component', () => {
     const input = screen.getByPlaceholderText('Enter story name or number') as HTMLInputElement;
     userEvent.type(input, 'n');
     expect(gamesService.updateStoryName).toHaveBeenCalledWith(mockGame.id, 'testStoryn');
+  });
+
+  it('keeps the caret where it was when a stale story name update comes back from the db', () => {
+    const { rerender } = render(
+      <GameController
+        game={mockGame}
+        currentPlayerId={mockCurrentPlayerId}
+        players={mockPlayers}
+      />,
+    );
+    const input = screen.getByTestId('story-name-input') as HTMLInputElement;
+
+    // type an 'X' at the very start of the existing story name
+    input.focus();
+    fireEvent.change(input, { target: { value: 'XtestStory' } });
+    input.setSelectionRange(1, 1);
+
+    // the db write is async, so the next snapshot still carries the old story name
+    rerender(
+      <GameController
+        game={mockGame}
+        currentPlayerId={mockCurrentPlayerId}
+        players={mockPlayers}
+      />,
+    );
+
+    expect(input.value).toBe('XtestStory');
+    expect(input.selectionStart).toBe(1);
+  });
+
+  it('picks up story name changes made by other players', () => {
+    const { rerender } = render(
+      <GameController
+        game={mockGame}
+        currentPlayerId={mockCurrentPlayerId}
+        players={mockPlayers}
+      />,
+    );
+
+    rerender(
+      <GameController
+        game={{ ...mockGame, storyName: 'storyFromSomeoneElse' }}
+        currentPlayerId={mockCurrentPlayerId}
+        players={mockPlayers}
+      />,
+    );
+
+    expect(screen.getByDisplayValue('storyFromSomeoneElse')).toBeInTheDocument();
   });
 
   describe('When Player is Moderator', () => {
@@ -390,6 +474,18 @@ describe('GameController component', () => {
       const res = getAverage(mockGame, players);
 
       expect(res).toEqual(Number(expected.toFixed(2)));
+    });
+
+    it('should compute the correct average for ShortFibonacci cards showing 20/40/100', () => {
+      const shortFibonacciGame: Game = { ...mockGame, gameType: GameType.ShortFibonacci };
+      const twentyCard = getCards(GameType.ShortFibonacci).find((c) => c.displayValue === '20')!;
+      const players: Player[] = [
+        { id: '1', name: 'A', value: twentyCard.value, emoji: '', status: Status.Finished },
+      ];
+
+      const res = getAverage(shortFibonacciGame, players);
+
+      expect(res).toEqual(20);
     });
   });
   describe('AutoReveal', () => {
