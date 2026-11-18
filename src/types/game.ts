@@ -2,11 +2,14 @@ import { CardConfig } from '../components/Players/CardPicker/CardConfigs';
 import { Status } from './status';
 
 export interface TimerProps {
+  // Elapsed seconds at the last start/resume or pause operation.
   currentSeconds?: number;
   totalSeconds?: number;
   soundOn?: boolean;
   timerVisible?: boolean;
   timerPaused?: boolean;
+  // Unix epoch milliseconds for the latest start/resume; null while paused.
+  startedAt?: number | null;
 }
 export interface Game {
   id: string;
