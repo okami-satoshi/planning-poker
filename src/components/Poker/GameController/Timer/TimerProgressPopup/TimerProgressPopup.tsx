@@ -1,20 +1,12 @@
-import { ChangeEvent, useEffect, useRef, useState, useCallback } from 'react';
+import { ChangeEvent, useEffect, useRef, useState } from 'react';
 import CircularProgressBar from '../../../../elements/CircularProgressBar';
 import { useTranslation } from 'react-i18next';
+import { TimerProps as GameTimerProps } from '../../../../../types/game';
 
-type TimerProps = {
+type TimerProps = GameTimerProps & {
   isMod?: boolean;
-  currentSeconds?: number;
-  totalSeconds?: number;
-  soundOn?: boolean;
-  timerPaused?: boolean;
   onTimerClose: () => void;
-  onTimerStateUpdate: (update: {
-    currentSeconds: number;
-    totalSeconds: number;
-    soundOn: boolean;
-    timerPaused: boolean;
-  }) => void;
+  onTimerStateUpdate: (update: GameTimerProps) => void;
 };
 
 const getMinutesAndSeconds = (time: number) => [Math.floor(time / 60), time % 60];
@@ -28,85 +20,83 @@ export const TimerProgress: React.FC<TimerProps> = ({
   isMod,
   onTimerStateUpdate,
   soundOn = true,
-  timerPaused = false,
+  timerPaused = true,
+  startedAt = null,
 }) => {
-  const [total, setTotal] = useState(totalSeconds);
-  const [current, setCurrent] = useState(currentSeconds);
-  const [inProgress, setInProgress] = useState(!isMod && !timerPaused);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const [_soundOn, setSoundOn] = useState(soundOn);
+  const [now, setNow] = useState(Date.now);
+  const wasRunning = useRef(false);
+  const total = totalSeconds;
+  // Old sessions without a start timestamp remain readable and can be resumed.
+  const hasStartTime = typeof startedAt === 'number' && Number.isFinite(startedAt);
+  const getCurrent = (time: number) =>
+    Math.min(
+      total,
+      Math.max(
+        0,
+        currentSeconds +
+          (!timerPaused && hasStartTime ? Math.floor(Math.max(0, time - startedAt!) / 1000) : 0),
+      ),
+    );
+  const current = getCurrent(now);
+  const inProgress = !timerPaused && hasStartTime && current < total;
 
   const { t } = useTranslation();
 
   useEffect(() => {
-    if (!isMod) {
-      setInProgress(false);
-      setCurrent(currentSeconds);
-      setTotal(totalSeconds);
-      setSoundOn(soundOn);
-    }
-  }, [isMod, currentSeconds, totalSeconds, soundOn]);
+    if (!inProgress) return;
+    setNow(Date.now());
+    const interval = setInterval(() => setNow(Date.now()), 250);
+    return () => clearInterval(interval);
+  }, [inProgress, startedAt]);
 
   useEffect(() => {
-    if (inProgress && isMod) {
-      intervalRef.current = setInterval(() => {
-        setCurrent((prev) => {
-          if (prev + 1 >= total) {
-            clearInterval(intervalRef.current as NodeJS.Timeout);
-            setInProgress(false);
-            if (audio && _soundOn) audio.play();
-            return 0;
-          }
-          return prev + 1;
-        });
-      }, 1000);
+    if (wasRunning.current && !inProgress && current >= total && total > 0 && soundOn && isMod) {
+      audio?.play()?.catch(() => {});
     }
-    return () => clearInterval(intervalRef.current as NodeJS.Timeout);
-  }, [inProgress, total, _soundOn, isMod]);
+    wasRunning.current = inProgress;
+  }, [inProgress, current, total, soundOn, isMod]);
 
-  useEffect(() => {
-    if (isMod) {
-      onTimerStateUpdate({
-        totalSeconds: total,
-        currentSeconds: current,
-        timerPaused: !inProgress,
-        soundOn: _soundOn,
-      });
-    }
-  }, [current, total, inProgress, _soundOn, isMod, onTimerStateUpdate]);
-
-  const startTimer = useCallback(() => setInProgress(true), []);
-  const pauseTimer = useCallback(() => {
-    setInProgress(false);
-    clearInterval(intervalRef.current as NodeJS.Timeout);
-  }, []);
-  const handleReset = useCallback(() => {
-    setCurrent(0);
-    setInProgress(false);
-    clearInterval(intervalRef.current as NodeJS.Timeout);
-    intervalRef.current = null;
-  }, []);
-  const onAddSeconds = useCallback(() => setTotal((prev) => prev + 60), []);
-  const onReduceSeconds = useCallback(
-    () => setTotal((prev) => (prev - 60 > 30 ? prev - 60 : prev)),
-    [],
-  );
-  const onMinutesChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      const minutes = Number(event.target.value.slice(-2));
-      setTotal(minutes * 60 + (total % 60));
-      setCurrent(0);
-    },
-    [total],
-  );
-  const onSecondsChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      const seconds = Number(event.target.value.slice(-2));
-      setTotal(Math.floor(total / 60) * 60 + seconds);
-      setCurrent(0);
-    },
-    [total],
-  );
+  // Only explicit user actions publish shared state. Receiving a snapshot or
+  // ticking the display must never cause another database write.
+  const publish = (update: GameTimerProps) => {
+    if (!isMod) return;
+    onTimerStateUpdate({
+      currentSeconds,
+      totalSeconds,
+      soundOn,
+      timerPaused,
+      startedAt,
+      ...update,
+    });
+  };
+  const startTimer = () => {
+    const elapsed = getCurrent(Date.now());
+    publish({
+      currentSeconds: elapsed >= total ? 0 : elapsed,
+      timerPaused: false,
+      startedAt: Date.now(),
+    });
+  };
+  const pauseTimer = () =>
+    publish({ currentSeconds: getCurrent(Date.now()), timerPaused: true, startedAt: null });
+  const handleReset = () => publish({ currentSeconds: 0, timerPaused: true, startedAt: null });
+  const setDuration = (seconds: number, reset = false) => {
+    if (!Number.isFinite(seconds) || seconds < 0 || seconds === total) return;
+    publish({
+      totalSeconds: seconds,
+      currentSeconds: reset ? 0 : getCurrent(Date.now()),
+      timerPaused: true,
+      startedAt: null,
+    });
+  };
+  const onAddSeconds = () => setDuration(total + 60);
+  const onReduceSeconds = () => {
+    if (total - 60 > 30) setDuration(total - 60);
+  };
+  const onMinutesChange = (event: ChangeEvent<HTMLInputElement>) =>
+    setDuration(Number(event.target.value.slice(-2)) * 60 + (total % 60), true);
+  const onSecondsChange = (event: ChangeEvent<HTMLInputElement>) =>
+    setDuration(Math.floor(total / 60) * 60 + Number(event.target.value.slice(-2)), true);
 
   const [minutes, seconds] = getMinutesAndSeconds(total);
   const [runningMinutes, runningSeconds] = getMinutesAndSeconds(total - current);
@@ -117,7 +107,7 @@ export const TimerProgress: React.FC<TimerProps> = ({
     <div className='fixed bottom-4 right-4 shadow-xl rounded-lg bg-white p-4 w-[15rem] h-fit border-gray-200 border-1 dark:bg-gray-800 dark:border-gray-700 z-10'>
       <button
         title={
-          _soundOn
+          soundOn
             ? isMod
               ? t('GameController.Timer.soundEnabledMod')
               : t('GameController.Timer.soundEnabledPlayer')
@@ -126,10 +116,10 @@ export const TimerProgress: React.FC<TimerProps> = ({
             : t('GameController.Timer.soundDisabledPlayer')
         }
         className={`absolute top-3 left-3 p-1 ${isMod ? 'cursor-pointer' : ''}`}
-        onClick={() => isMod && setSoundOn((s) => !s)}
+        onClick={() => publish({ soundOn: !soundOn })}
         type='button'
       >
-        {_soundOn ? '🔊' : '🔇'}
+        {soundOn ? '🔊' : '🔇'}
       </button>
       {isMod && (
         <div
@@ -154,7 +144,7 @@ export const TimerProgress: React.FC<TimerProps> = ({
               <input
                 type='text'
                 value={
-                  (intervalRef.current && inProgress) || !isMod
+                  inProgress || !isMod
                     ? runningMinutes.toString().padStart(2, '0')
                     : minutes.toString().padStart(2, '0')
                 }
@@ -162,13 +152,13 @@ export const TimerProgress: React.FC<TimerProps> = ({
                 pattern='[0-9]*'
                 className='w-[2.5rem] border-none focus:outline-none'
                 onChange={onMinutesChange}
-                disabled={!!intervalRef.current || inProgress}
+                disabled={inProgress || !isMod}
               />
               <span className='pb-[0.3rem]'>:</span>
               <input
                 type='text'
                 value={
-                  (intervalRef.current && inProgress) || !isMod
+                  inProgress || !isMod
                     ? runningSeconds.toString().padStart(2, '0')
                     : seconds.toString().padStart(2, '0')
                 }
@@ -176,7 +166,7 @@ export const TimerProgress: React.FC<TimerProps> = ({
                 pattern='[0-9]*'
                 className='w-[2.5rem] border-none focus:outline-none'
                 onChange={onSecondsChange}
-                disabled={!!intervalRef.current || inProgress}
+                disabled={inProgress || !isMod}
               />
             </div>
             {isMod && !inProgress && (

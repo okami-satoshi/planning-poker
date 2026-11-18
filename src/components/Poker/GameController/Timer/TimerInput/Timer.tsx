@@ -1,17 +1,10 @@
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import { ClockSVG } from '../../../../SVGs/Clock';
 import { TimerProgress } from '../TimerProgressPopup/TimerProgressPopup';
 import { TimerProps as GameTimerProps } from '../../../../../types/game';
 
 type TimerProps = {
-  timerProps: {
-    isMod?: boolean;
-    currentSeconds?: number;
-    totalSeconds?: number;
-    soundOn?: boolean;
-    timerVisible?: boolean;
-    timerPaused?: boolean;
-  };
+  timerProps: GameTimerProps & { isMod?: boolean };
   onTimerUpdate: (timer: GameTimerProps) => void;
 };
 
@@ -19,40 +12,43 @@ export const Timer: React.FC<TimerProps> = ({ timerProps, onTimerUpdate }) => {
   const {
     isMod = false,
     timerVisible = false,
-    timerPaused = false,
+    timerPaused = true,
     currentSeconds = 0,
     totalSeconds = 300,
     soundOn = true,
+    startedAt = null,
   } = timerProps;
 
   const onTimerStateUpdate = useCallback(
-    (update) => {
-      onTimerUpdate(update);
+    (update: GameTimerProps) => {
+      onTimerUpdate({ ...update, timerVisible });
     },
-    [onTimerUpdate],
+    [onTimerUpdate, timerVisible],
   );
 
   const onTimerClose = useCallback(() => {
-    onTimerStateUpdate({
+    onTimerUpdate({
       currentSeconds: 0,
       totalSeconds: 300,
       soundOn: true,
-      timerPaused: false,
+      timerPaused: true,
       timerVisible: false,
+      startedAt: null,
     });
-  }, [onTimerStateUpdate]);
+  }, [onTimerUpdate]);
 
   return (
     <>
       {isMod && (
         <button
           onClick={() =>
-            onTimerStateUpdate({
+            onTimerUpdate({
               currentSeconds: 0,
               totalSeconds: 300,
               soundOn: true,
-              timerPaused: false,
+              timerPaused: true,
               timerVisible: true,
+              startedAt: null,
             })
           }
           title='Timer'
@@ -68,11 +64,10 @@ export const Timer: React.FC<TimerProps> = ({ timerProps, onTimerUpdate }) => {
           totalSeconds={totalSeconds}
           onTimerClose={onTimerClose}
           isMod={isMod}
-          onTimerStateUpdate={(update) => {
-            onTimerStateUpdate({ ...update, timerVisible });
-          }}
+          onTimerStateUpdate={onTimerStateUpdate}
           soundOn={soundOn}
           timerPaused={timerPaused}
+          startedAt={startedAt}
         />
       )}
     </>

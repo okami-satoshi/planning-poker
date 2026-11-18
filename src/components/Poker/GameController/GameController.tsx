@@ -76,22 +76,7 @@ export const GameController: React.FC<GameControllerProps> = ({
   };
 
   const isMod = isModerator(game.createdById, currentPlayerId, game.isAllowMembersToManageSession);
-  const timerProps: {
-    isMod?: boolean;
-    timerVisible?: boolean;
-    timerPaused?: boolean;
-    currentSeconds?: number;
-    totalSeconds?: number;
-    soundOn?: boolean;
-  } = { isMod: isMod, timerVisible: game.timerProps?.timerVisible };
-  if (!isMod) {
-    timerProps.isMod = false;
-    timerProps.timerVisible = game.timerProps?.timerVisible;
-    timerProps.timerPaused = game.timerProps?.timerPaused;
-    timerProps.currentSeconds = game.timerProps?.currentSeconds;
-    timerProps.totalSeconds = game.timerProps?.totalSeconds;
-    timerProps.soundOn = game.timerProps?.soundOn;
-  }
+  const timerProps = { ...game.timerProps, isMod };
 
   return (
     <div className='flex flex-col items-center w-full px-2'>
@@ -100,7 +85,7 @@ export const GameController: React.FC<GameControllerProps> = ({
 
         <div className='flex items-center justify-between px-3 py-1 border-b border-gray-400 dark:border-gray-600'>
           <div className='text-lg font-semibold truncate flex-grow'>{game.name}</div>
-          <Timer timerProps={timerProps} onTimerUpdate={(props) => onUpdatedTimerProps(props)} />
+          <Timer timerProps={timerProps} onTimerUpdate={onUpdatedTimerProps} />
           <div className='mx-2 h-6 border-l border-gray-400 dark:border-gray-600' />
           <span className='text-sm font-medium'>
             {game.gameStatus} {getGameStatusIcon(game.gameStatus)}

@@ -68,8 +68,9 @@ describe('Timer', () => {
       currentSeconds: 0,
       totalSeconds: 300,
       soundOn: true,
-      timerPaused: false,
+      timerPaused: true,
       timerVisible: false,
+      startedAt: null,
     });
   });
 
@@ -104,8 +105,9 @@ describe('Timer', () => {
       currentSeconds: 0,
       totalSeconds: 300,
       soundOn: true,
-      timerPaused: false,
+      timerPaused: true,
       timerVisible: true,
+      startedAt: null,
     });
 
     // Simulate parent updating timerVisible to true
@@ -124,8 +126,9 @@ describe('Timer', () => {
       currentSeconds: 0,
       totalSeconds: 300,
       soundOn: true,
-      timerPaused: false,
+      timerPaused: true,
       timerVisible: false,
+      startedAt: null,
     });
   });
 });
